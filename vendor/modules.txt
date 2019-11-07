@@ -19,6 +19,7 @@ github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/cloudformation
+github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af

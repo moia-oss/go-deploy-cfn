@@ -1,10 +1,11 @@
-// Package godeploycfn has some helper functions
+// Package godeploycfn allows deployment of a Cloudformation template to be a bit easier
 package godeploycfn
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 // Cloudformation is a utility wrapper around the original aws api to make
 // common operations more intuitive
 type Cloudformation struct {
-	CFClient  *cloudformation.CloudFormation
+	CFClient  cloudformationiface.CloudFormationAPI
 	StackName string
 }
 
@@ -44,6 +45,19 @@ func (c *Cloudformation) getCreateType() (string, error) {
 	}
 
 	return changeSetType, nil
+}
+
+func trimStackName(stackName string, max int) string {
+	var sn string
+
+	switch {
+	case len(stackName) <= max:
+		sn = stackName
+	case len(stackName) > max:
+		sn = stackName[0 : max]
+	}
+
+	return sn
 }
 
 func (c *Cloudformation) executeChangeSet(changeSetName string) error {
@@ -144,36 +158,4 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
 	}
 
 	return c.executeChangeSet(csn)
-}
-
-func trimStackName(stackName string, max int) string {
-	var sn string
-
-	switch {
-	case len(stackName) <= max:
-		sn = stackName
-	case len(stackName) > max:
-		sn = stackName[0 : max-1]
-	}
-
-	return sn
-}
-
-// CreateStackName creates a valid stack name from the given alarm name
-func CreateStackName(s string) string {
-	s = strings.ToLower(s)
-	for _, char := range [...]string{"/", "."} {
-		s = strings.ReplaceAll(s, char, "-")
-	}
-
-	return fmt.Sprintf("%s-%s", "infra-monitor-alerts", s)
-}
-
-// CreateLogicalName creates a logical name used in the CloudFormation template
-func CreateLogicalName(s string) string {
-	for _, char := range [...]string{"-", "/", "_", "."} {
-		s = strings.ReplaceAll(s, char, "")
-	}
-
-	return s
 }
