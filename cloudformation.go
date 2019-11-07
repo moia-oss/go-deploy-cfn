@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -54,7 +55,7 @@ func trimStackName(stackName string, max int) string {
 	case len(stackName) <= max:
 		sn = stackName
 	case len(stackName) > max:
-		sn = stackName[0 : max]
+		sn = stackName[0:max]
 	}
 
 	return sn

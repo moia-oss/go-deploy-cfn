@@ -2,10 +2,11 @@ package godeploycfn
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-	"strings"
 
 	"testing"
 )
@@ -13,7 +14,7 @@ import (
 type mockCFClient struct {
 	cloudformationiface.CloudFormationAPI
 	callsBeforeStackFinished int
-	calls *int
+	calls                    *int
 }
 
 func newMockCFClient(calls int, callsBeforeFinished int) mockCFClient {
@@ -32,7 +33,6 @@ func newMockCFClient(calls int, callsBeforeFinished int) mockCFClient {
 // both zero-values are 0, it does nothing and the stack is always in StackStatusUpdateComplete.
 func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) (*cloudformation.DescribeStacksOutput, error) {
 	if strings.Contains(*input.StackName, "update") {
-
 		status := cloudformation.StackStatusUpdateInProgress
 
 		if *m.calls >= m.callsBeforeStackFinished {
@@ -40,14 +40,14 @@ func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) 
 		}
 
 		*(m.calls)++
-
 		fmt.Printf("status %v\n", status)
+
 		return &cloudformation.DescribeStacksOutput{
 			NextToken: nil,
-			Stacks:   []*cloudformation.Stack{
+			Stacks: []*cloudformation.Stack{
 				{
-					StackName:                   input.StackName,
-					StackStatus:                 aws.String(status),
+					StackName:   input.StackName,
+					StackStatus: aws.String(status),
 				},
 			},
 		}, nil
@@ -69,14 +69,15 @@ func (m mockCFClient) ExecuteChangeSet(*cloudformation.ExecuteChangeSetInput) (*
 }
 
 func TestCloudformation_executeChangeSet(t *testing.T) {
-
 	type fields struct {
 		CFClient  cloudformationiface.CloudFormationAPI
 		StackName string
 	}
+
 	type args struct {
 		changeSetName string
 	}
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -84,12 +85,12 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "test execute changeset happy path",
-			fields:  fields{
-				CFClient:  newMockCFClient(0,1),
+			name: "test execute changeset happy path",
+			fields: fields{
+				CFClient:  newMockCFClient(0, 1),
 				StackName: "test update stack",
 			},
-			args:    args{
+			args: args{
 				changeSetName: "foobar doesn't matter",
 			},
 			wantErr: false,
@@ -113,6 +114,7 @@ func TestCloudformation_getCreateType(t *testing.T) {
 		CFClient  cloudformationiface.CloudFormationAPI
 		StackName string
 	}
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -120,33 +122,34 @@ func TestCloudformation_getCreateType(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Test getting UPDATE changeset",
-			fields:  fields{
-				CFClient:  newMockCFClient(0,0),
+			name: "Test getting UPDATE changeset",
+			fields: fields{
+				CFClient:  newMockCFClient(0, 0),
 				StackName: "stack with update",
 			},
 			want:    "UPDATE",
 			wantErr: false,
 		},
 		{
-			name:    "Test getting CREATE changeset",
-			fields:  fields{
-				CFClient:  newMockCFClient(0,0),
+			name: "Test getting CREATE changeset",
+			fields: fields{
+				CFClient:  newMockCFClient(0, 0),
 				StackName: "stack with create",
 			},
 			want:    "CREATE",
 			wantErr: false,
 		},
 		{
-			name:    "Test getting unexpected error",
-			fields:  fields{
-				CFClient:  newMockCFClient(0,0),
+			name: "Test getting unexpected error",
+			fields: fields{
+				CFClient:  newMockCFClient(0, 0),
 				StackName: "stack with error",
 			},
 			want:    "",
 			wantErr: true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Cloudformation{
@@ -169,6 +172,7 @@ func Test_changeSetIsEmpty(t *testing.T) {
 	type args struct {
 		o *cloudformation.DescribeChangeSetOutput
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -205,6 +209,7 @@ func Test_changeSetIsEmpty(t *testing.T) {
 			want: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := changeSetIsEmpty(tt.args.o); got != tt.want {
@@ -219,6 +224,7 @@ func Test_trimStackName(t *testing.T) {
 		stackName string
 		max       int
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -233,6 +239,7 @@ func Test_trimStackName(t *testing.T) {
 			want: "foo",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := trimStackName(tt.args.stackName, tt.args.max); got != tt.want {
