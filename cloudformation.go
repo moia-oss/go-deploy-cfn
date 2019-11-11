@@ -27,7 +27,7 @@ type Cloudformation struct {
 
 // CloudformationAPI provides an API which can be used instead of a concrete client for testing/mocking purposes
 type CloudformationAPI interface {
-	CloudFormationDeploy(templateBody string) error
+	CloudFormationDeploy(templateBody string, namedIAM bool) error
 }
 
 func changeSetIsEmpty(o *cloudformation.DescribeChangeSetOutput) bool {
