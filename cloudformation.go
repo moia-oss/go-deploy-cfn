@@ -25,6 +25,11 @@ type Cloudformation struct {
 	StackName string
 }
 
+// CloudformationAPI provides an API which can be used instead of a concrete client for testing/mocking purposes
+type CloudformationAPI interface {
+	CloudFormationDeploy(templateBody string) error
+}
+
 func changeSetIsEmpty(o *cloudformation.DescribeChangeSetOutput) bool {
 	// Seems absurd but looks like this is the best way to find out if the ChangeSet is empty.
 	return *o.Status == "FAILED" && strings.Contains(*o.StatusReason, "submitted information didn't contain changes")
