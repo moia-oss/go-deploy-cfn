@@ -105,7 +105,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 }
 
 // CloudFormationDeploy deploys the given Cloudformation Template to the given Cloudformation Stack
-func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
+func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool) error {
 	changeSetType, err := c.getCreateType()
 	if err != nil {
 		return err
@@ -118,7 +118,6 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
 
 	// max stack name is 128, then we add a UUID (36 byte/char string) so the max the stackName can be is 92
 	// we also add a `-' here, so adjust for that accordingly
-
 	csn := fmt.Sprintf("%s-%s", trimStackName(c.StackName, 91), id)
 
 	// normally, the max we can have is 128
@@ -131,6 +130,10 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
 		TemplateBody:  aws.String(templateBody),
 	}
 
+	if namedIAM {
+		ccsi.Capabilities = []*string{aws.String(cloudformation.CapabilityCapabilityNamedIam)}
+	}
+
 	ccso, err := c.CFClient.CreateChangeSet(ccsi)
 	if err != nil {
 		return fmt.Errorf("the ChangeSetType was %s error in creating ChangeSet: %s", changeSetType, err)
@@ -141,8 +144,7 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
 		StackName:     aws.String(sn),
 	}
 
-	ctx := context.Background()
-	err = c.CFClient.WaitUntilChangeSetCreateCompleteWithContext(ctx,
+	err = c.CFClient.WaitUntilChangeSetCreateCompleteWithContext(context.Background(),
 		dcsi,
 		request.WithWaiterDelay(request.ConstantWaiterDelay(5*time.Second)),
 		request.WithWaiterMaxAttempts(12))
