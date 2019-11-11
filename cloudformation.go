@@ -165,3 +165,22 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string) error {
 
 	return c.executeChangeSet(csn)
 }
+
+// CreateStackName creates a valid stack name from the given alarm name
+func CreateStackName(s string) string {
+	s = strings.ToLower(s)
+	for _, char := range [...]string{"/", "."} {
+		s = strings.ReplaceAll(s, char, "-")
+	}
+
+	return s
+}
+
+// CreateLogicalName creates a logical name used in the CloudFormation template
+func CreateLogicalName(s string) string {
+	for _, char := range [...]string{"-", "/", "_", "."} {
+		s = strings.ReplaceAll(s, char, "")
+	}
+
+	return s
+}

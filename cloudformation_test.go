@@ -248,3 +248,73 @@ func Test_trimStackName(t *testing.T) {
 		})
 	}
 }
+
+func Test_CreateStackName(t *testing.T) {
+	type args struct {
+		alarmName string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test Global Alarm Name Generation",
+			args: args{
+				alarmName: "AWS/Lambda/Global/ConcurrentExecutions",
+			},
+			want: "aws-lambda-global-concurrentexecutions",
+		},
+		{
+			name: "Test Lambda Alarm Name Generation 2nd Case",
+			args: args{
+				alarmName: "AWS/Lambda/Global/Error",
+			},
+			want: "aws-lambda-global-error",
+		},
+		{
+			name: "Test Lambda Alarm Name Generation No Periods",
+			args: args{
+				alarmName: "AWS/Lambda/Global/Spot.foo.bar",
+			},
+			want: "aws-lambda-global-spot-foo-bar",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CreateStackName(tt.args.alarmName); got != tt.want {
+				t.Errorf("createStackName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateLogicalName(t *testing.T) {
+	type args struct {
+		s string
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test normal create logical name",
+			args: args{
+				s: "Foo/Bar-baz_bux.foo",
+			},
+			want: "FooBarbazbuxfoo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CreateLogicalName(tt.args.s); got != tt.want {
+				t.Errorf("CreateLogicalName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
