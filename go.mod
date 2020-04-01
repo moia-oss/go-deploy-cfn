@@ -3,7 +3,7 @@ module github.com/moia-dev/go-deploy-cfn
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.29.24
+	github.com/aws/aws-sdk-go v1.30.1
 	github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
