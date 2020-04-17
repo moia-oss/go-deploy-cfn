@@ -1,4 +1,5 @@
-# github.com/aws/aws-sdk-go v1.29.24
+# github.com/aws/aws-sdk-go v1.30.8
+## explicit
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
@@ -23,15 +24,27 @@ github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/cloudformation
 github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
+# github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927
+## explicit
 # github.com/google/uuid v1.1.1
+## explicit
 github.com/google/uuid
 # github.com/jmespath/go-jmespath v0.3.0
+## explicit
 github.com/jmespath/go-jmespath
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
+## explicit
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/sirupsen/logrus v1.4.2
+# github.com/matryer/try v0.0.0-20161228173917-9ac251b645a2
+## explicit
+# github.com/sirupsen/logrus v1.5.0
+## explicit
 github.com/sirupsen/logrus
-# golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
+# github.com/stretchr/objx v0.1.1
+## explicit
+# golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
+## explicit
 golang.org/x/sys/unix
 # gopkg.in/matryer/try.v1 v1.0.0-20150601225556-312d2599e12e
+## explicit
 gopkg.in/matryer/try.v1
