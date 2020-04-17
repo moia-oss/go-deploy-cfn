@@ -38,8 +38,8 @@ func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) 
 		if *m.calls >= m.callsBeforeStackFinished {
 			status = cloudformation.StackStatusUpdateComplete
 		}
-
 		*(m.calls)++
+
 		fmt.Printf("status %v\n", status)
 
 		return &cloudformation.DescribeStacksOutput{
