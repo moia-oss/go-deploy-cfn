@@ -38,6 +38,7 @@ linters:
     - dupl
     - goconst
     - unparam
+    - gomnd
 
 issues:
   exclude-use-default: false
