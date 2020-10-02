@@ -1,4 +1,4 @@
-# github.com/aws/aws-sdk-go v1.34.21
+# github.com/aws/aws-sdk-go v1.35.1
 ## explicit
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
@@ -29,19 +29,18 @@ github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
 # github.com/google/uuid v1.1.2
 ## explicit
 github.com/google/uuid
-# github.com/jmespath/go-jmespath v0.3.0
+# github.com/jmespath/go-jmespath v0.4.0
 github.com/jmespath/go-jmespath
-# github.com/konsorten/go-windows-terminal-sequences v1.0.3
-github.com/konsorten/go-windows-terminal-sequences
 # github.com/matryer/try v0.0.0-20161228173917-9ac251b645a2
 ## explicit
-# github.com/sirupsen/logrus v1.6.0
+# github.com/sirupsen/logrus v1.7.0
 ## explicit
 github.com/sirupsen/logrus
 # golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
+golang.org/x/sys/windows
 # gopkg.in/matryer/try.v1 v1.0.0-20150601225556-312d2599e12e
 ## explicit
 gopkg.in/matryer/try.v1
