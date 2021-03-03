@@ -31,9 +31,12 @@ github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
 github.com/google/uuid
 # github.com/jmespath/go-jmespath v0.4.0
 github.com/jmespath/go-jmespath
+# github.com/magefile/mage v1.10.0
+github.com/magefile/mage/mg
+github.com/magefile/mage/sh
 # github.com/matryer/try v0.0.0-20161228173917-9ac251b645a2
 ## explicit
-# github.com/sirupsen/logrus v1.7.0
+# github.com/sirupsen/logrus v1.8.0
 ## explicit
 github.com/sirupsen/logrus
 # golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
