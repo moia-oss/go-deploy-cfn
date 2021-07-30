@@ -1,4 +1,4 @@
-module github.com/moia-dev/go-deploy-cfn
+module github.com/moia-oss/go-deploy-cfn
 
 go 1.16
 
