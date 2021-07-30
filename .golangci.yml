@@ -34,7 +34,6 @@ linters:
     - gochecknoglobals
     - scopelint
     - goerr113
-    - exhaustivestruct
     - funlen
     - gomnd
     - gci
