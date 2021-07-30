@@ -29,30 +29,98 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - interfacer
     - maligned
     - prealloc
     - gochecknoglobals
     - scopelint
+    - goerr113
+    - exhaustivestruct
+    - funlen
+    - gomnd
+    - gci
+    - unconvert
+    - wrapcheck
     - lll
     - dupl
     - goconst
     - unparam
-    - gomnd
+    - goimports
+    - godox
+
+run:
+  modules-download-mode: vendor
+  tests: false
 
 issues:
   exclude-use-default: false
   exclude-rules:
-  # Exclude some linters from running on tests files.
-  - path: _test\.go
-    linters:
-      - gocyclo
-      - errcheck
-      - dupl
-      - gosec
-      - govet
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration
 service:
-  golangci-lint-version: 1.21.x # use the fixed version to not introduce new linters unexpectedly
+  golangci-lint-version: 1.30.x # use the fixed version to not introduce new linters unexpectedly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
