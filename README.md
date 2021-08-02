@@ -1,3 +1,5 @@
+***MOVED This repository has been moved to https://github.com/moia-oss/go-deploy-cfn***.  Please use the go module in MOIA-OSS for your projects or migrate existing ones! 
+
 # go-deploy-cfn
 
 A helper library which can be used in a Go project to deploy a cloudformation yaml template easier.
