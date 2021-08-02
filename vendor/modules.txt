@@ -26,7 +26,7 @@ github.com/aws/aws-sdk-go/service/cloudformation
 github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
 # github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927
 ## explicit
-# github.com/google/uuid v1.2.0
+# github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
 # github.com/jmespath/go-jmespath v0.4.0
