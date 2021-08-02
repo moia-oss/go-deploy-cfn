@@ -1,6 +1,6 @@
-module github.com/moia-dev/go-deploy-cfn
+module github.com/moia-oss/go-deploy-cfn
 
-go 1.14
+go 1.16
 
 require (
 	github.com/aws/aws-sdk-go v1.40.12
