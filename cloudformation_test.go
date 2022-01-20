@@ -304,7 +304,7 @@ func TestCreateLogicalName(t *testing.T) {
 		{
 			name: "Test normal create logical name",
 			args: args{
-				s: "Foo/Bar-baz_bux.foo",
+				s: "Foo/Bar - baz_bux.foo",
 			},
 			want: "FooBarbazbuxfoo",
 		},

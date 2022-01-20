@@ -193,7 +193,7 @@ func CreateStackName(s string) string {
 
 // CreateLogicalName creates a logical name used in the CloudFormation template.
 func CreateLogicalName(s string) string {
-	for _, char := range [...]string{"-", "/", "_", "."} {
+	for _, char := range [...]string{"-", "/", "_", ".", " "} {
 		s = strings.ReplaceAll(s, char, "")
 	}
 
