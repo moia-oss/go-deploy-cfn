@@ -127,6 +127,10 @@ type CloudFormationAPI interface {
 	DescribeChangeSetWithContext(aws.Context, *cloudformation.DescribeChangeSetInput, ...request.Option) (*cloudformation.DescribeChangeSetOutput, error)
 	DescribeChangeSetRequest(*cloudformation.DescribeChangeSetInput) (*request.Request, *cloudformation.DescribeChangeSetOutput)
 
+	DescribeChangeSetHooks(*cloudformation.DescribeChangeSetHooksInput) (*cloudformation.DescribeChangeSetHooksOutput, error)
+	DescribeChangeSetHooksWithContext(aws.Context, *cloudformation.DescribeChangeSetHooksInput, ...request.Option) (*cloudformation.DescribeChangeSetHooksOutput, error)
+	DescribeChangeSetHooksRequest(*cloudformation.DescribeChangeSetHooksInput) (*request.Request, *cloudformation.DescribeChangeSetHooksOutput)
+
 	DescribePublisher(*cloudformation.DescribePublisherInput) (*cloudformation.DescribePublisherOutput, error)
 	DescribePublisherWithContext(aws.Context, *cloudformation.DescribePublisherInput, ...request.Option) (*cloudformation.DescribePublisherOutput, error)
 	DescribePublisherRequest(*cloudformation.DescribePublisherInput) (*request.Request, *cloudformation.DescribePublisherOutput)
@@ -319,6 +323,10 @@ type CloudFormationAPI interface {
 	RegisterType(*cloudformation.RegisterTypeInput) (*cloudformation.RegisterTypeOutput, error)
 	RegisterTypeWithContext(aws.Context, *cloudformation.RegisterTypeInput, ...request.Option) (*cloudformation.RegisterTypeOutput, error)
 	RegisterTypeRequest(*cloudformation.RegisterTypeInput) (*request.Request, *cloudformation.RegisterTypeOutput)
+
+	RollbackStack(*cloudformation.RollbackStackInput) (*cloudformation.RollbackStackOutput, error)
+	RollbackStackWithContext(aws.Context, *cloudformation.RollbackStackInput, ...request.Option) (*cloudformation.RollbackStackOutput, error)
+	RollbackStackRequest(*cloudformation.RollbackStackInput) (*request.Request, *cloudformation.RollbackStackOutput)
 
 	SetStackPolicy(*cloudformation.SetStackPolicyInput) (*cloudformation.SetStackPolicyOutput, error)
 	SetStackPolicyWithContext(aws.Context, *cloudformation.SetStackPolicyInput, ...request.Option) (*cloudformation.SetStackPolicyOutput, error)
