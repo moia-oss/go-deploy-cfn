@@ -3,7 +3,6 @@ package godeploycfn
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,6 +15,13 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/matryer/try.v1"
+)
+
+const (
+	maxRetries          = 100
+	maxWaitTimeForStack = time.Minute * 10
+	backoffRate         = 1.5
+	maxWaitInterval     = time.Minute
 )
 
 // Cloudformation is a utility wrapper around the original aws api to make
@@ -79,6 +85,11 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 		return fmt.Errorf("error executing the ChangeSet: %w", err)
 	}
 
+	// By default, it is set to 10, which may be insufficient
+	try.MaxRetries = maxRetries
+	startOfRetryLoop := time.Now()
+	waitFor := time.Second * 5
+
 	return try.Do(func(attempt int) (bool, error) {
 		var err error
 		// nolint
@@ -102,14 +113,27 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 			return false, nil
 		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
-			duration := time.Duration(6) * time.Second
-			time.Sleep(duration)
+			if time.Since(startOfRetryLoop) > maxWaitTimeForStack {
+				return false, fmt.Errorf("stack still in progress, but maximum wait period of %s has passed", maxWaitTimeForStack)
+			}
 
-			return attempt < 20, errors.New("stack not yet in completed state")
+			time.Sleep(waitFor)
+			waitFor = waitForNext(waitFor)
+			return true, fmt.Errorf("stack still in progress, retrying")
 		}
 
 		return false, fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, *dso.Stacks[0].StackStatus)
 	})
+}
+
+func waitForNext(waitFor time.Duration) time.Duration {
+	next := time.Millisecond * time.Duration(float64(waitFor.Milliseconds())*backoffRate)
+
+	if next < maxWaitInterval {
+		return next
+	}
+
+	return maxWaitInterval
 }
 
 // CloudFormationDeploy deploys the given Cloudformation Template to the given Cloudformation Stack.
