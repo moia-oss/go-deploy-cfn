@@ -338,7 +338,7 @@ func Test_waitForNext(t *testing.T) {
 	}
 
 	waitFor = time.Second * 50
-	if waitForNext(waitFor) != maxWaitInterval {
+	if waitForNext(waitFor) != maxRetryInterval {
 		t.Fail()
 	}
 }
