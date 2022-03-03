@@ -117,7 +117,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 				return false, fmt.Errorf("stack still in progress, but maximum wait period of %s has passed", maxWaitTimeForStack)
 			}
 
-			log.Infof("Stack create or update still in progress. Will poll status again in %s. Will stop makeing more attempts after %s.",
+			log.Infof("Stack create or update still in progress. Will poll status again in %s seconds. Will stop making more attempts after %s.",
 				waitFor.Round(time.Second), startOfRetryLoop.Add(maxWaitTimeForStack).Format(time.RFC3339))
 
 			time.Sleep(waitFor)
