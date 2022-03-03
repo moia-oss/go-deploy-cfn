@@ -119,6 +119,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 			time.Sleep(waitFor)
 			waitFor = waitForNext(waitFor)
+
 			return true, fmt.Errorf("stack still in progress, retrying")
 		}
 
