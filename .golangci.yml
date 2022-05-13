@@ -45,6 +45,9 @@ linters:
     - unparam
     - goimports
     - godox
+    - interfacer
+    - golint
+    - exhaustivestruct
 
 run:
   modules-download-mode: vendor
