@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/matryer/try.v1"
 )
 
@@ -29,13 +29,26 @@ const (
 // Cloudformation is a utility wrapper around the original aws api to make
 // common operations more intuitive.
 type Cloudformation struct {
-	CFClient  cloudformationiface.CloudFormationAPI
-	StackName string
+	CFClient    cloudformationiface.CloudFormationAPI
+	StackName   string
+	logrusEntry *logrus.Entry
 }
 
 // CloudformationAPI provides an API which can be used instead of a concrete client for testing/mocking purposes.
 type CloudformationAPI interface {
 	CloudFormationDeploy(templateBody string, namedIAM bool) error
+}
+
+func (c *Cloudformation) logger() *logrus.Entry {
+	stackFields := logrus.Fields{
+		"stack_name": c.StackName,
+	}
+
+	if c.logrusEntry == nil {
+		return logrus.WithFields(stackFields)
+	}
+
+	return c.logrusEntry.WithFields(stackFields)
 }
 
 func changeSetIsEmpty(o *cloudformation.DescribeChangeSetOutput) bool {
@@ -101,7 +114,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 		}
 		dso, err := c.CFClient.DescribeStacks(dsi)
 		if err != nil {
-			waitNext, doRetry, innerErr := waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, fmt.Errorf("encountered an error when describing the stack: %w", err))
+			waitNext, doRetry, innerErr := c.waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, fmt.Errorf("encountered an error when describing the stack: %w", err))
 			waitFor = waitNext
 
 			return doRetry, innerErr
@@ -115,11 +128,11 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 		switch *dso.Stacks[0].StackStatus {
 		case cloudformation.StackStatusUpdateComplete, cloudformation.StackStatusCreateComplete, cloudformation.StackStatusUpdateCompleteCleanupInProgress:
-			log.Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
+			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
 
 			return false, nil
 		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
-			waitNext, doRetry, err := waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, errors.New("stack update or creation still in progress"))
+			waitNext, doRetry, err := c.waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, errors.New("stack update or creation still in progress"))
 			waitFor = waitNext
 
 			return doRetry, err
@@ -129,13 +142,13 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 	})
 }
 
-func waitAndRetryIfAppropriate(startOfRetryLoop time.Time, waitFor time.Duration, recoverableErr error) (time.Duration, bool, error) {
+func (c *Cloudformation) waitAndRetryIfAppropriate(startOfRetryLoop time.Time, waitFor time.Duration, recoverableErr error) (time.Duration, bool, error) {
 	if time.Since(startOfRetryLoop) > maxRetryTimeForStack {
 		return 0, false, fmt.Errorf("retryable state occurred but maximum retry period of %s has passed, so we'll stop trying: %w",
 			maxRetryTimeForStack, recoverableErr)
 	}
 
-	log.Infof("Will retry again in %s. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
+	c.logger().Infof("Will retry again in %s. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
 		waitFor.Round(time.Second), startOfRetryLoop.Add(maxRetryTimeForStack).Format(time.RFC3339), recoverableErr)
 	time.Sleep(waitFor)
 
@@ -210,7 +223,7 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		}
 
 		if changeSetIsEmpty(dcso) {
-			log.Infof("ChangeSet '%v' is empty. Nothing to do.", *ccso.Id)
+			c.logger().Infof("ChangeSet '%v' is empty. Nothing to do.", *ccso.Id)
 
 			return nil
 		}
