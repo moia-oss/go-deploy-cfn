@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 
