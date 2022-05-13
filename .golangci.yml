@@ -45,6 +45,10 @@ linters:
     - unparam
     - goimports
     - godox
+    - interfacer
+    - golint
+    - exhaustivestruct
+    - varnamelen # doesn't really match our variable naming style
 
 run:
   modules-download-mode: vendor

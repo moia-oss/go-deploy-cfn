@@ -3,13 +3,12 @@ package godeploycfn
 import (
 	"fmt"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-
-	"testing"
 )
 
 type mockCFClient struct {
