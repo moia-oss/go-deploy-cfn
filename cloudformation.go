@@ -32,7 +32,7 @@ const (
 type Cloudformation struct {
 	CFClient    cloudformationiface.CloudFormationAPI
 	StackName   string
-	logrusEntry *logrus.Entry
+	LogrusEntry *logrus.Entry
 }
 
 // CloudformationAPI provides an API which can be used instead of a concrete client for testing/mocking purposes.
@@ -45,11 +45,11 @@ func (c *Cloudformation) logger() *logrus.Entry {
 		"stack_name": c.StackName,
 	}
 
-	if c.logrusEntry == nil {
+	if c.LogrusEntry == nil {
 		return logrus.WithFields(stackFields)
 	}
 
-	return c.logrusEntry.WithFields(stackFields)
+	return c.LogrusEntry.WithFields(stackFields)
 }
 
 func changeSetIsEmpty(o *cloudformation.DescribeChangeSetOutput) bool {
