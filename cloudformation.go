@@ -90,7 +90,7 @@ func trimStackName(stackName string, max int) string {
 }
 
 func (c *Cloudformation) executeChangeSet(changeSetName string) error {
-	// nolint
+	//nolint
 	ecsi := &cloudformation.ExecuteChangeSetInput{
 		ChangeSetName: aws.String(changeSetName),
 		StackName:     aws.String(c.StackName),
@@ -109,7 +109,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 	return try.Do(func(attempt int) (bool, error) {
 		var err error
-		// nolint
+		//nolint
 		dsi := &cloudformation.DescribeStacksInput{
 			StackName: aws.String(c.StackName),
 		}
@@ -185,7 +185,7 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 	// normally, the max we can have is 128
 	sn := trimStackName(c.StackName, 128)
 
-	// nolint
+	//nolint
 	ccsi := &cloudformation.CreateChangeSetInput{
 		ChangeSetName: aws.String(csn),
 		ChangeSetType: aws.String(changeSetType),
@@ -202,7 +202,7 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		return fmt.Errorf("the ChangeSetType was %s error in creating ChangeSet: %w", changeSetType, err)
 	}
 
-	// nolint
+	//nolint
 	dcsi := &cloudformation.DescribeChangeSetInput{
 		ChangeSetName: ccso.Id,
 		StackName:     aws.String(sn),
