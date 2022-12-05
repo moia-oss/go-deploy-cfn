@@ -152,29 +152,6 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 	return errToReturn
 }
 
-func (c *Cloudformation) waitAndRetryIfAppropriate(startOfRetryLoop time.Time, waitFor time.Duration, recoverableErr error) (time.Duration, error) {
-	if time.Since(startOfRetryLoop) > maxRetryTimeForStack {
-		return 0, fmt.Errorf("retryable state occurred but maximum retry period of %s has passed, so we'll stop trying: %w",
-			maxRetryTimeForStack, recoverableErr)
-	}
-
-	c.logger().Infof("Will retry again in %s. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
-		waitFor.Round(time.Second), startOfRetryLoop.Add(maxRetryTimeForStack).Format(time.RFC3339), recoverableErr)
-	time.Sleep(waitFor)
-
-	return waitForNext(waitFor), fmt.Errorf("retryable state occurred - retrying: %w", recoverableErr)
-}
-
-func waitForNext(waitFor time.Duration) time.Duration {
-	next := time.Millisecond * time.Duration(float64(waitFor.Milliseconds())*backoffRate)
-
-	if next < maxRetryInterval {
-		return next
-	}
-
-	return maxRetryInterval
-}
-
 // CloudFormationDeploy deploys the given Cloudformation Template to the given Cloudformation Stack.
 func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool) error {
 	changeSetType, err := c.getCreateType()
