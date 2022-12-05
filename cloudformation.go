@@ -114,6 +114,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 		var dso *cloudformation.DescribeStacksOutput
 
 		dso, err = c.CFClient.DescribeStacks(&cloudformation.DescribeStacksInput{
+			NextToken: nil,
 			StackName: aws.String(c.StackName),
 		})
 		if err != nil {
