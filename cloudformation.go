@@ -17,10 +17,8 @@ import (
 )
 
 const (
-	maxRetries           = 100
 	maxRetryTimeForStack = time.Minute * 10
 	initialRetryPeriod   = 12 * time.Second
-	backoffRate          = 1.5
 	maxRetryInterval     = time.Minute
 )
 
