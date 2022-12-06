@@ -3,22 +3,27 @@ package godeploycfn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
+	"gopkg.in/matryer/try.v1"
 )
 
 const (
+	maxRetries           = 100
 	maxRetryTimeForStack = time.Minute * 10
 	initialRetryPeriod   = 12 * time.Second
+	backoffRate          = 1.5
 	maxRetryInterval     = time.Minute
 )
 
@@ -96,59 +101,69 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 		return fmt.Errorf("error executing the ChangeSet: %w", err)
 	}
 
-	endRetryTimestamp := time.Now().Add(maxRetryTimeForStack)
+	// By default, it is set to 10, which may be insufficient
+	try.MaxRetries = maxRetries
+	startOfRetryLoop := time.Now()
 
-	back := &backoff.ExponentialBackOff{
-		InitialInterval:     initialRetryPeriod,
-		RandomizationFactor: backoff.DefaultRandomizationFactor,
-		Multiplier:          backoff.DefaultMultiplier,
-		MaxInterval:         maxRetryInterval,
-		MaxElapsedTime:      maxRetryTimeForStack,
-		Stop:                backoff.Stop,
-		Clock:               backoff.SystemClock,
-	}
+	waitFor := initialRetryPeriod
 
-	var errToReturn error
-
-	err = backoff.Retry(func() error {
-		var dso *cloudformation.DescribeStacksOutput
-
-		dso, err = c.CFClient.DescribeStacks(&cloudformation.DescribeStacksInput{
-			NextToken: nil,
+	return try.Do(func(attempt int) (bool, error) {
+		var err error
+		//nolint
+		dsi := &cloudformation.DescribeStacksInput{
 			StackName: aws.String(c.StackName),
-		})
+		}
+		dso, err := c.CFClient.DescribeStacks(dsi)
 		if err != nil {
-			return fmt.Errorf("encountered an error when describing the stack: %w", err)
+			waitNext, doRetry, innerErr := c.waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, fmt.Errorf("encountered an error when describing the stack: %w", err))
+			waitFor = waitNext
+
+			return doRetry, innerErr
 		}
 
 		if len(dso.Stacks) != 1 {
-			errToReturn = fmt.Errorf("unexpected (!=1) number of stacks in result: %v", len(dso.Stacks))
+			err := fmt.Errorf("unexpected (!=1) number of stacks in result: %v", len(dso.Stacks))
 
-			return nil
+			return false, err
 		}
 
 		switch *dso.Stacks[0].StackStatus {
 		case cloudformation.StackStatusUpdateComplete, cloudformation.StackStatusCreateComplete, cloudformation.StackStatusUpdateCompleteCleanupInProgress:
 			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
 
-			return nil
+			return false, nil
 		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
-			c.logger().Infof("Encountered an error and will retry. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
-				endRetryTimestamp.Format(time.RFC3339), err)
+			waitNext, doRetry, err := c.waitAndRetryIfAppropriate(startOfRetryLoop, waitFor, errors.New("stack update or creation still in progress"))
+			waitFor = waitNext
 
-			return err
+			return doRetry, err
 		}
 
-		errToReturn = fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, *dso.Stacks[0].StackStatus)
+		return false, fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, *dso.Stacks[0].StackStatus)
+	})
+}
 
-		return nil
-	}, back)
-	if err != nil {
-		return fmt.Errorf("retryable state occurred but maximum retry period of %s has passed, so we'll stop trying: %w",
-			maxRetryTimeForStack, err)
+func (c *Cloudformation) waitAndRetryIfAppropriate(startOfRetryLoop time.Time, waitFor time.Duration, recoverableErr error) (time.Duration, bool, error) {
+	if time.Since(startOfRetryLoop) > maxRetryTimeForStack {
+		return 0, false, fmt.Errorf("retryable state occurred but maximum retry period of %s has passed, so we'll stop trying: %w",
+			maxRetryTimeForStack, recoverableErr)
 	}
 
-	return errToReturn
+	c.logger().Infof("Will retry again in %s. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
+		waitFor.Round(time.Second), startOfRetryLoop.Add(maxRetryTimeForStack).Format(time.RFC3339), recoverableErr)
+	time.Sleep(waitFor)
+
+	return waitForNext(waitFor), true, fmt.Errorf("retryable state occurred - retrying: %w", recoverableErr)
+}
+
+func waitForNext(waitFor time.Duration) time.Duration {
+	next := time.Millisecond * time.Duration(float64(waitFor.Milliseconds())*backoffRate)
+
+	if next < maxRetryInterval {
+		return next
+	}
+
+	return maxRetryInterval
 }
 
 // CloudFormationDeploy deploys the given Cloudformation Template to the given Cloudformation Stack.

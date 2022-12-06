@@ -2,11 +2,13 @@ package godeploycfn
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-	"strings"
-	"testing"
 )
 
 type mockCFClient struct {
@@ -314,5 +316,28 @@ func TestCreateLogicalName(t *testing.T) {
 				t.Errorf("CreateLogicalName() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_waitForNext(t *testing.T) {
+	waitFor := time.Second * 5
+
+	tests := []struct {
+		want time.Duration
+	}{
+		{7500 * time.Millisecond},
+		{11250 * time.Millisecond},
+		{16875 * time.Millisecond},
+	}
+	for _, tt := range tests {
+		waitFor = waitForNext(waitFor)
+		if tt.want != waitFor {
+			t.Errorf("Expected %s but got %s", tt.want, waitFor)
+		}
+	}
+
+	waitFor = time.Second * 50
+	if waitForNext(waitFor) != maxRetryInterval {
+		t.Fail()
 	}
 }
