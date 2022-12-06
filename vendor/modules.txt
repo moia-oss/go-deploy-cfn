@@ -24,15 +24,16 @@ github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/cloudformation
 github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface
-# github.com/cenkalti/backoff/v4 v4.2.0
-## explicit; go 1.18
-github.com/cenkalti/backoff/v4
+# github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927
+## explicit
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
+# github.com/matryer/try v0.0.0-20161228173917-9ac251b645a2
+## explicit
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -41,3 +42,6 @@ github.com/sirupsen/logrus
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# gopkg.in/matryer/try.v1 v1.0.0-20150601225556-312d2599e12e
+## explicit
+gopkg.in/matryer/try.v1
