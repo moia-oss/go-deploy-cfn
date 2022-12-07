@@ -127,19 +127,20 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 			return nil
 		}
 
-		switch *dso.Stacks[0].StackStatus {
+		stackStatus := *dso.Stacks[0].StackStatus
+		switch stackStatus {
 		case cloudformation.StackStatusUpdateComplete, cloudformation.StackStatusCreateComplete, cloudformation.StackStatusUpdateCompleteCleanupInProgress:
 			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
 
 			return nil
 		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
-			c.logger().Infof("Encountered an error and will retry. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
-				endRetryTimestamp.Format(time.RFC3339), err)
+			c.logger().Infof("Stack update still in progress. Will check again. Will stop making more attempts to deploy after %s.",
+				endRetryTimestamp.Format(time.RFC3339))
 
-			return err
+			return fmt.Errorf("stack creation not complete yet, status: %s", stackStatus)
 		}
 
-		errToReturn = fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, *dso.Stacks[0].StackStatus)
+		errToReturn = fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, stackStatus)
 
 		return nil
 	}, back)
