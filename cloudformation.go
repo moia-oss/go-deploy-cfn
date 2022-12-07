@@ -134,8 +134,8 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 			return nil
 		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
-			c.logger().Infof("Encountered an error and will retry. Will stop making more attempts to deploy after %s. Reason for retrying was: %s",
-				endRetryTimestamp.Format(time.RFC3339), err)
+			c.logger().Infof("Stack update still in progress. Will check again. Will stop making more attempts to deploy after %s.",
+				endRetryTimestamp.Format(time.RFC3339))
 
 			return fmt.Errorf("stack creation not complete yet, status: %s", stackStatus)
 		}
