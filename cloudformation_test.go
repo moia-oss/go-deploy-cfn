@@ -2,11 +2,12 @@ package godeploycfn
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
-	"strings"
-	"testing"
 )
 
 type mockCFClient struct {
@@ -68,7 +69,7 @@ func (m mockCFClient) ExecuteChangeSet(*cloudformation.ExecuteChangeSetInput) (*
 
 func TestCloudformation_executeChangeSet(t *testing.T) {
 	type fields struct {
-		CFClient  cloudformationiface.CloudFormationAPI
+		CFClient  mockCFClient
 		StackName string
 	}
 
@@ -77,10 +78,11 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name                  string
+		fields                fields
+		args                  args
+		wantErr               bool
+		expectedNumberOfCalls int
 	}{
 		{
 			name: "test execute changeset happy path",
@@ -91,7 +93,20 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 			args: args{
 				changeSetName: "foobar doesn't matter",
 			},
-			wantErr: false,
+			wantErr:               false,
+			expectedNumberOfCalls: 2, // callsBeforeFinished + 1
+		},
+		{
+			name: "test execute changeset happy path no retry",
+			fields: fields{
+				CFClient:  newMockCFClient(0, 0),
+				StackName: "test update stack noretry",
+			},
+			args: args{
+				changeSetName: "foobar doesn't matter",
+			},
+			wantErr:               false,
+			expectedNumberOfCalls: 1, // callsBeforeFinished + 1
 		},
 	}
 	for _, tt := range tests {
@@ -102,6 +117,12 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 			}
 			if err := c.executeChangeSet(tt.args.changeSetName); (err != nil) != tt.wantErr {
 				t.Errorf("executeChangeSet() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			gotCalls := *tt.fields.CFClient.calls
+			wantCalls := tt.expectedNumberOfCalls
+			if gotCalls != wantCalls {
+				t.Errorf("unexpected no. of calls, expected %v but got %v", wantCalls, gotCalls)
 			}
 		})
 	}
