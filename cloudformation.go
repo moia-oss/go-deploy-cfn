@@ -210,7 +210,15 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		}
 
 		if changeSetIsEmpty(dcso) {
-			c.logger().Infof("ChangeSet '%v' is empty. Nothing to do.", *ccso.Id)
+			c.logger().Infof("ChangeSet '%v' is empty. Deleting again.", *ccso.Id)
+
+			_, err3 := c.CFClient.DeleteChangeSet(&cloudformation.DeleteChangeSetInput{
+				ChangeSetName: aws.String(csn),
+				StackName:     aws.String(sn),
+			})
+			if err3 != nil {
+				return fmt.Errorf("couldn't delete empty change set: %w", err3)
+			}
 
 			return nil
 		}
