@@ -21,7 +21,7 @@ const (
 	maxRetryInterval     = time.Minute
 )
 
-// CloudFormationClient defines the interface for CloudFormation operations
+// CloudFormationClient defines the interface for CloudFormation operations.
 type CloudFormationClient interface {
 	DescribeStacks(ctx context.Context, params *cloudformation.DescribeStacksInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error)
 	CreateChangeSet(ctx context.Context, params *cloudformation.CreateChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.CreateChangeSetOutput, error)
@@ -79,14 +79,14 @@ func (c *Cloudformation) getCreateType(ctx context.Context) (types.ChangeSetType
 	return changeSetType, nil
 }
 
-func trimStackName(stackName string, max int) string {
+func trimStackName(stackName string, maxLen int) string {
 	var sn string
 
 	switch {
-	case len(stackName) <= max:
+	case len(stackName) <= maxLen:
 		sn = stackName
-	case len(stackName) > max:
-		sn = stackName[0:max]
+	case len(stackName) > maxLen:
+		sn = stackName[0:maxLen]
 	}
 
 	return sn
@@ -128,6 +128,7 @@ func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName str
 
 		if len(dso.Stacks) != 1 {
 			errToReturn = fmt.Errorf("unexpected (!=1) number of stacks in result: %v", len(dso.Stacks))
+
 			return nil
 		}
 
@@ -135,14 +136,17 @@ func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName str
 		switch stackStatus {
 		case types.StackStatusUpdateComplete, types.StackStatusCreateComplete, types.StackStatusUpdateCompleteCleanupInProgress:
 			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
+
 			return nil
 		case types.StackStatusCreateInProgress, types.StackStatusUpdateInProgress:
 			c.logger().Infof("Stack update still in progress. Will check again. Will stop making more attempts to deploy after %s.",
 				endRetryTimestamp.Format(time.RFC3339))
+
 			return retry.RetryableError(fmt.Errorf("stack creation not complete yet, status: %s", stackStatus))
 		}
 
 		errToReturn = fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, stackStatus)
+
 		return nil
 	})
 	if err != nil {
@@ -206,6 +210,7 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 	defer cancelChangeSet()
 
 	var dcso *cloudformation.DescribeChangeSetOutput
+
 	err = retry.Do(changeSetCtx, changeSetBackoff, func(ctx context.Context) error {
 		dcso, err = c.CFClient.DescribeChangeSet(ctx, dcsi)
 		if err != nil {
@@ -218,7 +223,6 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 
 		return retry.RetryableError(fmt.Errorf("changeset not ready yet, status: %s", dcso.Status))
 	})
-
 	if err != nil {
 		return fmt.Errorf("waiting for changeset creation timed out: %w", err)
 	}

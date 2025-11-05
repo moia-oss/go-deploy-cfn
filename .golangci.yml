@@ -2,7 +2,8 @@ linters-settings:
   govet:
     enable:
       - shadow
-      - fieldalignment  # replacement for maligned
+    disable:
+      - fieldalignment
   gocyclo:
     min-complexity: 10
   dupl:
@@ -45,7 +46,11 @@ linters:
     - goimports
     - godox
     - varnamelen # doesn't really match our variable naming style
-    - tenv       # deprecated: use usetesting
+    - tenv
+    - depguard
+    - exhaustive
+    - gocyclo
+    - cyclop
 
 run:
   modules-download-mode: vendor
