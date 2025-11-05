@@ -1,12 +1,11 @@
 linters-settings:
   govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
+    enable:
+      - shadow
+    disable:
+      - fieldalignment
   gocyclo:
     min-complexity: 10
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
@@ -25,17 +24,18 @@ linters-settings:
       - wrapperFunc
       - paramTypeCombine
       - hugeParam
+  revive:  # replacement for golint and nosnakecase
+    rules:
+      - name: var-naming
 
 linters:
   enable-all: true
   disable:
-    - maligned
     - prealloc
     - gochecknoglobals
-    - scopelint
-    - goerr113
+    - err113       # formerly goerr113
     - funlen
-    - gomnd
+    - mnd          # formerly gomnd
     - gci
     - unconvert
     - wrapcheck
@@ -45,10 +45,12 @@ linters:
     - unparam
     - goimports
     - godox
-    - interfacer
-    - golint
-    - exhaustivestruct
     - varnamelen # doesn't really match our variable naming style
+    - tenv
+    - depguard
+    - exhaustive
+    - gocyclo
+    - cyclop
 
 run:
   modules-download-mode: vendor
@@ -65,8 +67,3 @@ issues:
         - dupl
         - gosec
         - funlen
-
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.30.x # use the fixed version to not introduce new linters unexpectedly
