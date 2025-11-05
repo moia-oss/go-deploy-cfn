@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
+	"github.com/sethvargo/go-retry"
 	"github.com/sirupsen/logrus"
 )
 
@@ -106,19 +106,16 @@ func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName str
 
 	endRetryTimestamp := time.Now().Add(maxRetryTimeForStack)
 
-	back := &backoff.ExponentialBackOff{
-		InitialInterval:     initialRetryPeriod,
-		RandomizationFactor: backoff.DefaultRandomizationFactor,
-		Multiplier:          backoff.DefaultMultiplier,
-		MaxInterval:         maxRetryInterval,
-		MaxElapsedTime:      maxRetryTimeForStack,
-		Stop:                backoff.Stop,
-		Clock:               backoff.SystemClock,
-	}
+	backoff := retry.NewFibonacci(initialRetryPeriod)
+	backoff = retry.WithCappedDuration(maxRetryInterval, backoff)
+
+	// Create a context with timeout for the retry loop
+	retryCtx, cancel := context.WithTimeout(ctx, maxRetryTimeForStack)
+	defer cancel()
 
 	var errToReturn error
 
-	err = backoff.Retry(func() error {
+	err = retry.Do(retryCtx, backoff, func(ctx context.Context) error {
 		var dso *cloudformation.DescribeStacksOutput
 
 		dso, err = c.CFClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
@@ -126,12 +123,11 @@ func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName str
 			StackName: aws.String(c.StackName),
 		})
 		if err != nil {
-			return fmt.Errorf("encountered an error when describing the stack: %w", err)
+			return retry.RetryableError(fmt.Errorf("encountered an error when describing the stack: %w", err))
 		}
 
 		if len(dso.Stacks) != 1 {
 			errToReturn = fmt.Errorf("unexpected (!=1) number of stacks in result: %v", len(dso.Stacks))
-
 			return nil
 		}
 
@@ -139,19 +135,16 @@ func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName str
 		switch stackStatus {
 		case types.StackStatusUpdateComplete, types.StackStatusCreateComplete, types.StackStatusUpdateCompleteCleanupInProgress:
 			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
-
 			return nil
 		case types.StackStatusCreateInProgress, types.StackStatusUpdateInProgress:
 			c.logger().Infof("Stack update still in progress. Will check again. Will stop making more attempts to deploy after %s.",
 				endRetryTimestamp.Format(time.RFC3339))
-
-			return fmt.Errorf("stack creation not complete yet, status: %s", stackStatus)
+			return retry.RetryableError(fmt.Errorf("stack creation not complete yet, status: %s", stackStatus))
 		}
 
 		errToReturn = fmt.Errorf("unexpected stack status for stack %s: %s", *dso.Stacks[0].StackName, stackStatus)
-
 		return nil
-	}, back)
+	})
 	if err != nil {
 		return fmt.Errorf("retryable state occurred but maximum retry period of %s has passed, so we'll stop trying: %w",
 			maxRetryTimeForStack, err)
@@ -204,24 +197,30 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		StackName:     aws.String(sn),
 	}
 
-	// Wait for changeset to be created with polling
-	maxAttempts := 12
-	delay := time.Duration(5) * time.Second
+	// Wait for changeset to be created with exponential backoff
+	changeSetBackoff := retry.NewFibonacci(5 * time.Second)
+	changeSetBackoff = retry.WithCappedDuration(30*time.Second, changeSetBackoff)
+
+	// Create a context with timeout for the changeset wait
+	changeSetCtx, cancelChangeSet := context.WithTimeout(ctx, time.Minute)
+	defer cancelChangeSet()
 
 	var dcso *cloudformation.DescribeChangeSetOutput
-	for i := 0; i < maxAttempts; i++ {
+	err = retry.Do(changeSetCtx, changeSetBackoff, func(ctx context.Context) error {
 		dcso, err = c.CFClient.DescribeChangeSet(ctx, dcsi)
 		if err != nil {
 			return fmt.Errorf("error describing the ChangeSet: %w", err)
 		}
 
 		if dcso.Status == types.ChangeSetStatusCreateComplete || dcso.Status == types.ChangeSetStatusFailed {
-			break
+			return nil
 		}
 
-		if i < maxAttempts-1 {
-			time.Sleep(delay)
-		}
+		return retry.RetryableError(fmt.Errorf("changeset not ready yet, status: %s", dcso.Status))
+	})
+
+	if err != nil {
+		return fmt.Errorf("waiting for changeset creation timed out: %w", err)
 	}
 
 	if dcso.Status != types.ChangeSetStatusCreateComplete {
