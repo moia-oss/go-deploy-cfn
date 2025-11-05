@@ -58,7 +58,7 @@ linters:
     - nosnakecase  # deprecated: use revive
 
 run:
-  modules-download-mode: readonly
+  modules-download-mode: vendor
   tests: false
 
 issues:
