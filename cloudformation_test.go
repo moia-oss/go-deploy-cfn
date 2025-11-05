@@ -1,17 +1,17 @@
 package godeploycfn
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 )
 
 type mockCFClient struct {
-	cloudformationiface.CloudFormationAPI
 	callsBeforeStackFinished int
 	calls                    *int
 }
@@ -30,12 +30,12 @@ func newMockCFClient(calls int, callsBeforeFinished int) mockCFClient {
 // in the case that as stack is in the update state, it will return StackStatusUpdateInProgress if
 // the internal calls variable is not equal to a present number. In normal cases when omitted, because
 // both zero-values are 0, it does nothing and the stack is always in StackStatusUpdateComplete.
-func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) (*cloudformation.DescribeStacksOutput, error) {
+func (m mockCFClient) DescribeStacks(ctx context.Context, input *cloudformation.DescribeStacksInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 	if strings.Contains(*input.StackName, "update") {
-		status := cloudformation.StackStatusUpdateInProgress
+		status := types.StackStatusUpdateInProgress
 
 		if *m.calls >= m.callsBeforeStackFinished {
-			status = cloudformation.StackStatusUpdateComplete
+			status = types.StackStatusUpdateComplete
 		}
 		*(m.calls)++
 
@@ -43,10 +43,10 @@ func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) 
 
 		return &cloudformation.DescribeStacksOutput{
 			NextToken: nil,
-			Stacks: []*cloudformation.Stack{
+			Stacks: []types.Stack{
 				{
 					StackName:   input.StackName,
-					StackStatus: aws.String(status),
+					StackStatus: status,
 				},
 			},
 		}, nil
@@ -63,7 +63,19 @@ func (m mockCFClient) DescribeStacks(input *cloudformation.DescribeStacksInput) 
 	}, fmt.Errorf("stackname %v does not exist", *input.StackName)
 }
 
-func (m mockCFClient) ExecuteChangeSet(*cloudformation.ExecuteChangeSetInput) (*cloudformation.ExecuteChangeSetOutput, error) {
+func (m mockCFClient) CreateChangeSet(ctx context.Context, input *cloudformation.CreateChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.CreateChangeSetOutput, error) {
+	return &cloudformation.CreateChangeSetOutput{}, nil
+}
+
+func (m mockCFClient) DescribeChangeSet(ctx context.Context, input *cloudformation.DescribeChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeChangeSetOutput, error) {
+	return &cloudformation.DescribeChangeSetOutput{}, nil
+}
+
+func (m mockCFClient) DeleteChangeSet(ctx context.Context, input *cloudformation.DeleteChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DeleteChangeSetOutput, error) {
+	return &cloudformation.DeleteChangeSetOutput{}, nil
+}
+
+func (m mockCFClient) ExecuteChangeSet(ctx context.Context, input *cloudformation.ExecuteChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.ExecuteChangeSetOutput, error) {
 	return &cloudformation.ExecuteChangeSetOutput{}, nil
 }
 
@@ -115,7 +127,7 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 				CFClient:  tt.fields.CFClient,
 				StackName: tt.fields.StackName,
 			}
-			if err := c.executeChangeSet(tt.args.changeSetName); (err != nil) != tt.wantErr {
+			if err := c.executeChangeSet(context.Background(), tt.args.changeSetName); (err != nil) != tt.wantErr {
 				t.Errorf("executeChangeSet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -130,14 +142,14 @@ func TestCloudformation_executeChangeSet(t *testing.T) {
 
 func TestCloudformation_getCreateType(t *testing.T) {
 	type fields struct {
-		CFClient  cloudformationiface.CloudFormationAPI
+		CFClient  CloudFormationClient
 		StackName string
 	}
 
 	tests := []struct {
 		name    string
 		fields  fields
-		want    string
+		want    types.ChangeSetType
 		wantErr bool
 	}{
 		{
@@ -146,7 +158,7 @@ func TestCloudformation_getCreateType(t *testing.T) {
 				CFClient:  newMockCFClient(0, 0),
 				StackName: "stack with update",
 			},
-			want:    "UPDATE",
+			want:    types.ChangeSetTypeUpdate,
 			wantErr: false,
 		},
 		{
@@ -155,7 +167,7 @@ func TestCloudformation_getCreateType(t *testing.T) {
 				CFClient:  newMockCFClient(0, 0),
 				StackName: "stack with create",
 			},
-			want:    "CREATE",
+			want:    types.ChangeSetTypeCreate,
 			wantErr: false,
 		},
 		{
@@ -175,7 +187,7 @@ func TestCloudformation_getCreateType(t *testing.T) {
 				CFClient:  tt.fields.CFClient,
 				StackName: tt.fields.StackName,
 			}
-			got, err := c.getCreateType()
+			got, err := c.getCreateType(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCreateType() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -201,7 +213,7 @@ func Test_changeSetIsEmpty(t *testing.T) {
 			name: "Test changeset IS empty",
 			args: args{
 				o: &cloudformation.DescribeChangeSetOutput{
-					Status:       aws.String("FAILED"),
+					Status:       types.ChangeSetStatusFailed,
 					StatusReason: aws.String("foobar submitted information didn't contain changes"),
 				},
 			},
@@ -211,7 +223,7 @@ func Test_changeSetIsEmpty(t *testing.T) {
 			name: "Test changeset is not empty (other status reason)",
 			args: args{
 				o: &cloudformation.DescribeChangeSetOutput{
-					Status:       aws.String("FAILED"),
+					Status:       types.ChangeSetStatusFailed,
 					StatusReason: aws.String("foobar foo"),
 				},
 			},
@@ -221,7 +233,7 @@ func Test_changeSetIsEmpty(t *testing.T) {
 			name: "Test changeset is not empty (other status)",
 			args: args{
 				o: &cloudformation.DescribeChangeSetOutput{
-					Status:       aws.String("BANANA"),
+					Status:       types.ChangeSetStatus("BANANA"),
 					StatusReason: aws.String("foobar submitted information didn't contain changes"),
 				},
 			},

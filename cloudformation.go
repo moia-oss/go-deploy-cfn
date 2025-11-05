@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -22,10 +21,19 @@ const (
 	maxRetryInterval     = time.Minute
 )
 
+// CloudFormationClient defines the interface for CloudFormation operations
+type CloudFormationClient interface {
+	DescribeStacks(ctx context.Context, params *cloudformation.DescribeStacksInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error)
+	CreateChangeSet(ctx context.Context, params *cloudformation.CreateChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.CreateChangeSetOutput, error)
+	DescribeChangeSet(ctx context.Context, params *cloudformation.DescribeChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeChangeSetOutput, error)
+	DeleteChangeSet(ctx context.Context, params *cloudformation.DeleteChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DeleteChangeSetOutput, error)
+	ExecuteChangeSet(ctx context.Context, params *cloudformation.ExecuteChangeSetInput, optFns ...func(*cloudformation.Options)) (*cloudformation.ExecuteChangeSetOutput, error)
+}
+
 // Cloudformation is a utility wrapper around the original aws api to make
 // common operations more intuitive.
 type Cloudformation struct {
-	CFClient    cloudformationiface.CloudFormationAPI
+	CFClient    CloudFormationClient
 	StackName   string
 	LogrusEntry *logrus.Entry
 }
@@ -49,23 +57,23 @@ func (c *Cloudformation) logger() *logrus.Entry {
 
 func changeSetIsEmpty(o *cloudformation.DescribeChangeSetOutput) bool {
 	// Seems absurd but looks like this is the best way to find out if the ChangeSet is empty.
-	return *o.Status == "FAILED" && strings.Contains(*o.StatusReason, "submitted information didn't contain changes")
+	return o.Status == types.ChangeSetStatusFailed && o.StatusReason != nil && strings.Contains(*o.StatusReason, "submitted information didn't contain changes")
 }
 
-func (c *Cloudformation) getCreateType() (string, error) {
-	changeSetType := "UPDATE"
+func (c *Cloudformation) getCreateType(ctx context.Context) (types.ChangeSetType, error) {
+	changeSetType := types.ChangeSetTypeUpdate
 	//nolint
 	dsi := &cloudformation.DescribeStacksInput{
 		StackName: aws.String(c.StackName),
 	}
 
-	_, err := c.CFClient.DescribeStacks(dsi)
+	_, err := c.CFClient.DescribeStacks(ctx, dsi)
 	if err != nil && !strings.Contains(err.Error(), "does not exist") {
 		return "", fmt.Errorf("unexpected error while describing stack: %w", err)
 	}
 
 	if err != nil {
-		changeSetType = "CREATE"
+		changeSetType = types.ChangeSetTypeCreate
 	}
 
 	return changeSetType, nil
@@ -84,14 +92,14 @@ func trimStackName(stackName string, max int) string {
 	return sn
 }
 
-func (c *Cloudformation) executeChangeSet(changeSetName string) error {
+func (c *Cloudformation) executeChangeSet(ctx context.Context, changeSetName string) error {
 	//nolint
 	ecsi := &cloudformation.ExecuteChangeSetInput{
 		ChangeSetName: aws.String(changeSetName),
 		StackName:     aws.String(c.StackName),
 	}
 
-	_, err := c.CFClient.ExecuteChangeSet(ecsi)
+	_, err := c.CFClient.ExecuteChangeSet(ctx, ecsi)
 	if err != nil {
 		return fmt.Errorf("error executing the ChangeSet: %w", err)
 	}
@@ -113,7 +121,7 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 	err = backoff.Retry(func() error {
 		var dso *cloudformation.DescribeStacksOutput
 
-		dso, err = c.CFClient.DescribeStacks(&cloudformation.DescribeStacksInput{
+		dso, err = c.CFClient.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
 			NextToken: nil,
 			StackName: aws.String(c.StackName),
 		})
@@ -127,13 +135,13 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 			return nil
 		}
 
-		stackStatus := *dso.Stacks[0].StackStatus
+		stackStatus := dso.Stacks[0].StackStatus
 		switch stackStatus {
-		case cloudformation.StackStatusUpdateComplete, cloudformation.StackStatusCreateComplete, cloudformation.StackStatusUpdateCompleteCleanupInProgress:
+		case types.StackStatusUpdateComplete, types.StackStatusCreateComplete, types.StackStatusUpdateCompleteCleanupInProgress:
 			c.logger().Infof("ChangeSet '%s' has been successfully executed.", changeSetName)
 
 			return nil
-		case cloudformation.StackStatusCreateInProgress, cloudformation.StackStatusUpdateInProgress:
+		case types.StackStatusCreateInProgress, types.StackStatusUpdateInProgress:
 			c.logger().Infof("Stack update still in progress. Will check again. Will stop making more attempts to deploy after %s.",
 				endRetryTimestamp.Format(time.RFC3339))
 
@@ -154,7 +162,9 @@ func (c *Cloudformation) executeChangeSet(changeSetName string) error {
 
 // CloudFormationDeploy deploys the given Cloudformation Template to the given Cloudformation Stack.
 func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool) error {
-	changeSetType, err := c.getCreateType()
+	ctx := context.Background()
+
+	changeSetType, err := c.getCreateType(ctx)
 	if err != nil {
 		return err
 	}
@@ -174,16 +184,16 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 	//nolint
 	ccsi := &cloudformation.CreateChangeSetInput{
 		ChangeSetName: aws.String(csn),
-		ChangeSetType: aws.String(changeSetType),
+		ChangeSetType: changeSetType,
 		StackName:     aws.String(sn),
 		TemplateBody:  aws.String(templateBody),
 	}
 
 	if namedIAM {
-		ccsi.Capabilities = []*string{aws.String(cloudformation.CapabilityCapabilityNamedIam)}
+		ccsi.Capabilities = []types.Capability{types.CapabilityCapabilityNamedIam}
 	}
 
-	ccso, err := c.CFClient.CreateChangeSet(ccsi)
+	ccso, err := c.CFClient.CreateChangeSet(ctx, ccsi)
 	if err != nil {
 		return fmt.Errorf("the ChangeSetType was %s error in creating ChangeSet: %w", changeSetType, err)
 	}
@@ -194,25 +204,31 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		StackName:     aws.String(sn),
 	}
 
+	// Wait for changeset to be created with polling
 	maxAttempts := 12
 	delay := time.Duration(5) * time.Second
 
-	err = c.CFClient.WaitUntilChangeSetCreateCompleteWithContext(context.Background(),
-		dcsi,
-		request.WithWaiterDelay(request.ConstantWaiterDelay(delay)),
-		request.WithWaiterMaxAttempts(maxAttempts))
-
-	if err != nil {
-		dcso, err2 := c.CFClient.DescribeChangeSet(dcsi)
-
-		if err2 != nil {
-			return fmt.Errorf("error describing the ChangeSet: %w", err2)
+	var dcso *cloudformation.DescribeChangeSetOutput
+	for i := 0; i < maxAttempts; i++ {
+		dcso, err = c.CFClient.DescribeChangeSet(ctx, dcsi)
+		if err != nil {
+			return fmt.Errorf("error describing the ChangeSet: %w", err)
 		}
 
+		if dcso.Status == types.ChangeSetStatusCreateComplete || dcso.Status == types.ChangeSetStatusFailed {
+			break
+		}
+
+		if i < maxAttempts-1 {
+			time.Sleep(delay)
+		}
+	}
+
+	if dcso.Status != types.ChangeSetStatusCreateComplete {
 		if changeSetIsEmpty(dcso) {
 			c.logger().Infof("ChangeSet '%v' is empty. Deleting again.", *ccso.Id)
 
-			_, err3 := c.CFClient.DeleteChangeSet(&cloudformation.DeleteChangeSetInput{
+			_, err3 := c.CFClient.DeleteChangeSet(ctx, &cloudformation.DeleteChangeSetInput{
 				ChangeSetName: aws.String(csn),
 				StackName:     aws.String(sn),
 			})
@@ -223,10 +239,10 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 			return nil
 		}
 
-		return fmt.Errorf("changeset is not empty but waiting for changeset completion still timed out. Error was: %w", err)
+		return fmt.Errorf("changeset is not empty but waiting for changeset completion still timed out. Status: %s", dcso.Status)
 	}
 
-	return c.executeChangeSet(csn)
+	return c.executeChangeSet(ctx, csn)
 }
 
 // CreateStackName creates a valid stack name from the given alarm name.
