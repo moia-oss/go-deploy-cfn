@@ -1,12 +1,10 @@
 linters-settings:
   govet:
     check-shadowing: true
-  golint:
-    min-confidence: 0
+    enable:
+      - fieldalignment  # replacement for maligned
   gocyclo:
     min-complexity: 10
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
@@ -25,6 +23,9 @@ linters-settings:
       - wrapperFunc
       - paramTypeCombine
       - hugeParam
+  revive:  # replacement for golint and nosnakecase
+    rules:
+      - name: var-naming
 
 linters:
   enable-all: true
@@ -45,6 +46,16 @@ linters:
     - godox
     - exhaustivestruct
     - varnamelen # doesn't really match our variable naming style
+    # Explicitly disable all deprecated linters
+    - deadcode     # deprecated: use unused
+    - structcheck  # deprecated: use unused
+    - varcheck     # deprecated: use unused
+    - ifshort      # deprecated: no replacement
+    - golint       # deprecated: use revive
+    - interfacer   # deprecated: no replacement
+    - maligned     # deprecated: use govet fieldalignment
+    - scopelint    # deprecated: use exportloopref
+    - nosnakecase  # deprecated: use revive
 
 run:
   modules-download-mode: vendor
