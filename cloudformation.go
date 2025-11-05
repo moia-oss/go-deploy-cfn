@@ -201,17 +201,16 @@ func (c *Cloudformation) CloudFormationDeploy(templateBody string, namedIAM bool
 		StackName:     aws.String(sn),
 	}
 
-	// Wait for changeset to be created with exponential backoff
-	changeSetBackoff := retry.NewFibonacci(5 * time.Second)
-	changeSetBackoff = retry.WithCappedDuration(30*time.Second, changeSetBackoff)
+	maxAttempts := uint64(12)
+	delay := 5 * time.Second
 
-	// Create a context with timeout for the changeset wait
-	changeSetCtx, cancelChangeSet := context.WithTimeout(ctx, time.Minute)
-	defer cancelChangeSet()
+	// Wait for changeset to be created with constant delay
+	changeSetBackoff := retry.NewConstant(delay)
+	changeSetBackoff = retry.WithMaxRetries(maxAttempts, changeSetBackoff)
 
 	var dcso *cloudformation.DescribeChangeSetOutput
 
-	err = retry.Do(changeSetCtx, changeSetBackoff, func(ctx context.Context) error {
+	err = retry.Do(ctx, changeSetBackoff, func(ctx context.Context) error {
 		dcso, err = c.CFClient.DescribeChangeSet(ctx, dcsi)
 		if err != nil {
 			return fmt.Errorf("error describing the ChangeSet: %w", err)
