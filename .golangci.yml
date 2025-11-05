@@ -29,10 +29,8 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - maligned
     - prealloc
     - gochecknoglobals
-    - scopelint
     - goerr113
     - funlen
     - gomnd
@@ -45,8 +43,6 @@ linters:
     - unparam
     - goimports
     - godox
-    - interfacer
-    - golint
     - exhaustivestruct
     - varnamelen # doesn't really match our variable naming style
 
