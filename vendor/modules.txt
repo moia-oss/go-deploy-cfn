@@ -64,7 +64,7 @@ github.com/jmespath/go-jmespath
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/sirupsen/logrus v1.9.0
+# github.com/sirupsen/logrus v1.9.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
